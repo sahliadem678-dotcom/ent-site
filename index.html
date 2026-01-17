@@ -76,7 +76,25 @@ const users={
 };
 
 let current=null;
-let data=JSON.parse(localStorage.getItem("skibidiData")||"{}");
+let data = {};
+
+function save() {
+  db.collection("skibidi").doc("data").set(data);
+}
+
+function load() {
+  db.collection("skibidi").doc("data").get().then(doc => {
+    if (doc.exists) {
+      data = doc.data();
+      buildTabs();
+    } else {
+      data = { notes:{}, stars:{}, appel:{}, validation:{}, missions:[], edtCancel:{} };
+      save();
+      buildTabs();
+    }
+  });
+}
+
 if(!data.notes)data.notes={};
 if(!data.stars)data.stars={};
 if(!data.appel)data.appel={};
@@ -100,10 +118,11 @@ function connect(){
   current=id.value;
   login.style.display="none";
   app.style.display="block";
-  buildTabs();
+  load();
+();
 }
 
-function buildTabs(){
+function buildTabs();
   let r=users[current].role;
   let t=["Notes","Étoiles","Missions","Emploi du temps","Appel"];
   if(r=="secretaire")t=["Justification"];
