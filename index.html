@@ -1,63 +1,172 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Skibidi Firebase</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<title>SKIBIDI EC – Vie scolaire</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body{font-family:Arial;background:#eef3ff;margin:0}
+header{background:#0b5ed7;color:white;padding:12px;text-align:center;font-size:22px}
+.box{max-width:1000px;margin:15px auto;background:white;border-radius:10px;padding:15px}
+button{background:#0b5ed7;color:white;border:none;padding:6px 12px;border-radius:5px}
+input,select{padding:6px;margin:4px}
+.tab{display:inline-block;margin:4px;padding:6px 10px;background:#dbe7ff;border-radius:6px;cursor:pointer}
+.tab.active{background:white;border-bottom:3px solid #0b5ed7}
+.star{color:gold}
+</style>
 </head>
 <body>
 
-  <h1>🔥 Skibidi Notes</h1>
+<header>📘 SKIBIDI EC – Vie scolaire</header>
 
-  <input id="msg" placeholder="Écris un message">
-  <button onclick="envoyer()">Envoyer</button>
+<div class="box" id="login">
+<h3>Connexion</h3>
+<input id="id" placeholder="Identifiant"><br>
+<input id="pw" type="password" placeholder="Mot de passe"><br>
+<button onclick="connect()">Se connecter</button>
+<p id="err" style="color:red"></p>
+</div>
 
-  <ul id="liste"></ul>
+<div class="box" id="app" style="display:none">
+<div id="tabs"></div>
+<div id="content"></div>
+</div>
 
-  <!-- FIREBASE -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+<!-- 🔥 FIREBASE -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyA0SI63eordXvmAVbSyJv3NUNV_6nhoY4M",
-      authDomain: "skibidiordi.firebaseapp.com",
-      databaseURL: "https://skibidiordi-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "skibidiordi",
-      storageBucket: "skibidiordi.appspot.com",
-      messagingSenderId: "337349106625",
-      appId: "1:337349106625:web:c33de087e0ad61cc576d40"
-    };
+const firebaseConfig = {
+  apiKey: "TA_API_KEY",
+  authDomain: "TON_PROJET.firebaseapp.com",
+  projectId: "TON_PROJET"
+};
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-    const liste = document.getElementById("liste");
-    const input = document.getElementById("msg");
+window.saveOnline = async (data)=>{
+  await setDoc(doc(db,"skibidi","data"),data);
+};
+window.loadOnline = async ()=>{
+  const snap = await getDoc(doc(db,"skibidi","data"));
+  return snap.exists()?snap.data():{};
+};
+</script>
 
-    // envoyer un message
-    window.envoyer = function () {
-      if (input.value.trim() === "") return;
+<script>
+const users={
+  sahli:{pass:"sahli123",role:"prof",name:"M. Sahli"},
+  eleve:{pass:"1234",role:"eleve",name:"Élève"}
+};
 
-      push(ref(db, "messages"), {
-        texte: input.value,
-        date: Date.now()
-      });
+let current=null;
+let data={
+  notes:[],
+  stars:[],
+  mots:[],
+  missions:[],
+  edt:{
+    Lundi:"10h-12h",
+    Mardi:"10h-12h",
+    Mercredi:"10h-12h",
+    Jeudi:"10h-12h",
+    Vendredi:"10h-12h"
+  }
+};
 
-      input.value = "";
-    };
+loadOnline().then(d=>{ if(Object.keys(d).length) data=d; });
 
-    // lire les messages
-    onValue(ref(db, "messages"), (snapshot) => {
-      liste.innerHTML = "";
-      const data = snapshot.val();
-      for (let id in data) {
-        const li = document.createElement("li");
-        li.textContent = data[id].texte;
-        liste.appendChild(li);
-      }
-    });
-  </script>
+function save(){
+ localStorage.setItem("skibidiData",JSON.stringify(data));
+ saveOnline(data);
+}
+
+function connect(){
+ if(!users[id.value]||users[id.value].pass!=pw.value){
+   err.textContent="Identifiants incorrects";return;
+ }
+ current=id.value;
+ login.style.display="none";
+ app.style.display="block";
+ buildTabs();
+}
+
+function buildTabs(){
+ let t=["Notes","Étoiles","Mots","Missions","EDT"];
+ tabs.innerHTML=t.map(x=>`<span class="tab" onclick="openTab('${x}')">${x}</span>`).join("");
+ openTab(t[0]);
+}
+
+function openTab(n){
+ document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+ [...tabs.children].find(x=>x.textContent==n).classList.add("active");
+ if(n=="Notes")notesTab();
+ if(n=="Étoiles")starsTab();
+ if(n=="Mots")motsTab();
+ if(n=="Missions")missionsTab();
+ if(n=="EDT")edtTab();
+}
+
+/* NOTES */
+function notesTab(){
+ let h="<h3>📊 Notes</h3>";
+ if(users[current].role=="prof"){
+   h+=`<input id="n" placeholder="Note /20">
+       <button onclick="addNote()">Ajouter</button>`;
+ }
+ h+="<ul>"+data.notes.map(x=>`<li>${x}</li>`).join("")+"</ul>";
+ content.innerHTML=h;
+}
+function addNote(){data.notes.push(n.value);save();notesTab();}
+
+/* ÉTOILES */
+function starsTab(){
+ let h="<h3>⭐ Étoiles</h3>";
+ if(users[current].role=="prof"){
+   h+=`<select id="s"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+       <button onclick="addStar()">Ajouter</button>`;
+ }
+ h+="<ul>"+data.stars.map(x=>`<li>${"★".repeat(x)}</li>`).join("")+"</ul>";
+ content.innerHTML=h;
+}
+function addStar(){data.stars.push(parseInt(s.value));save();starsTab();}
+
+/* MOTS */
+function motsTab(){
+ let h="<h3>📩 Mots</h3>";
+ if(users[current].role=="prof"){
+   h+=`<input id="m" placeholder="Mot">
+       <button onclick="addMot()">Envoyer</button>`;
+ }
+ h+="<ul>"+data.mots.map(x=>`<li>${x}</li>`).join("")+"</ul>";
+ content.innerHTML=h;
+}
+function addMot(){data.mots.push(m.value);save();motsTab();}
+
+/* MISSIONS */
+function missionsTab(){
+ let h="<h3>📚 Missions</h3>";
+ if(users[current].role=="prof"){
+   h+=`<input id="mi" placeholder="Mission">
+       <button onclick="addMission()">Ajouter</button>`;
+ }
+ h+="<ul>"+data.missions.map(x=>`<li>${x}</li>`).join("")+"</ul>";
+ content.innerHTML=h;
+}
+function addMission(){data.missions.push(mi.value);save();missionsTab();}
+
+/* EDT */
+function edtTab(){
+ let h="<h3>🗓️ Emploi du temps</h3><ul>";
+ for(let j in data.edt){
+   h+=`<li>${j} : ${data.edt[j]}</li>`;
+ }
+ h+="</ul>";
+ content.innerHTML=h;
+}
+</script>
 
 </body>
 </html>
